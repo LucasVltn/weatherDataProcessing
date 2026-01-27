@@ -1,0 +1,20 @@
+# Here you can define all your datasets by using simple YAML syntax.
+#
+# Documentation for this file format can be found in "The Data Catalog"
+# Link: https://docs.kedro.org/en/stable/data/data_catalog.html
+
+city_weather_info:
+  type: json.JSONDataset
+  filepath: data/01_raw/city_weather_info.json
+
+
+readable_city_weather_data:
+  type: partitions.PartitionedDataset
+  path: data/02_intermediate/events/
+  dataset:
+    type: pandas.CSVDataset
+    save_args:
+      sep: ";"
+      index: False
+    load_args:
+      sep: ";"

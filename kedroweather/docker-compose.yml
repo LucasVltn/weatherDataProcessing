@@ -1,0 +1,11 @@
+services:
+  kedro:
+    build: .
+    image: kedro-weather-app:latest
+    env_file:
+      - .env
+    volumes:
+      - ./:/app   # monte le projet Kedro local dans le container
+    command: kedro run
+    tty: true
+    stdin_open: true
