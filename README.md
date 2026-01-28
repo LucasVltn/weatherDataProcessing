@@ -1,6 +1,10 @@
 # Weather Data Processing
 
-Système de récupération, traitement et orchestration des données météorologiques utilisant Kedro et Airflow.
+![Python](https://img.shields.io/badge/python-3.8+-blue)
+![Airflow](https://img.shields.io/badge/airflow-2.x-orange)
+![Kedro](https://img.shields.io/badge/kedro-0.18-green)
+
+Pipeline de données météo automatisé démontrant la mise en place d’une ingestion d’API, d’un traitement de données structuré et d’une orchestration avec Apache Airflow, dans une logique de projet Data Engineering professionnel.
 
 ## Vue d'ensemble
 
@@ -18,6 +22,30 @@ Ce projet automatise la collecte de données météorologiques en temps réel vi
 
 ## Architecture
 
+Le projet repose sur une architecture de pipeline de données orchestrée, découpée en plusieurs étapes clairement identifiées :
+
+OpenWeatherMap API
+
+↓
+
+Ingestion des données brutes
+
+↓
+
+Pipeline Kedro (nettoyage & transformation)
+
+↓
+
+Données structurées (CSV)
+
+↓
+
+Orchestration et planification via Airflow
+
+
+Apache Airflow est utilisé pour planifier et orchestrer l’exécution des pipelines Kedro, tandis que Docker permet de garantir un environnement reproductible.
+
+Voici la structure du repertoire
 ```
 weather_data_processing/
 ├── kedroweather/          # Pipeline Kedro principal
@@ -28,11 +56,12 @@ weather_data_processing/
 │   ├── Dockerfile         # Containerisation
 │   └── requirements.txt    # Dépendances Python
 │
-└── airflow_dags/          # Orchestration Airflow
-    ├── dags/              # DAGs Airflow
-    ├── logs/              # Logs d'exécution
-    ├── plugins/           # Extensions Airflow
-    └── docker-compose.yml # Stack Airflow
+├── airflow_dags/          # Orchestration Airflow
+│    ├── dags/              # DAGs Airflow
+│    ├── logs/              # Logs d'exécution
+│    ├── plugins/           # Extensions Airflow
+│    └── docker-compose.yml # Stack Airflow
+└── output/          # Répertoire de sortie
 ```
 
 ## Structure du pipeline Kedro
@@ -164,6 +193,8 @@ kedro run --params cities='[Paris,Londres,Berlin]'
 
 ### Vérifier les résultats
 
+Le pipeline génère des fichiers de données météo structurées, exploitables pour de l’analyse ou du stockage en base de données.
+
 Les fichiers de sortie sont dans `output/02_intermediate/events/` :
 ```bash
 ls output/02_intermediate/events/
@@ -177,6 +208,9 @@ Contenu des fichiers CSV :
 city,timestamp,temperature,humidity,weather_description
 Paris,2026-01-27 19:15:00,8.5,65,Nuageux
 ```
+
+Ces données peuvent ensuite être utilisées pour de la visualisation, de l’analyse ou intégrées dans un système de stockage analytique.
+
 
 ## Configuration
 
@@ -334,8 +368,13 @@ CSV horodaté → output/02_intermediate/events/
 
 - **Fréquence** : Toutes les 7 minutes
 - **Temps d'exécution** : ~5-10 secondes par exécution
-- **Stockage** : ~1 KB par ville par exécution
 - **Rétention** : Les données s'accumulent (considérer un archivage pour production)
+
+## About the author
+
+Ce projet a été réalisé par **Lucas Vltn**, Data Engineer junior, dans un objectif de montée en compétences et de professionnalisation.  
+Il illustre ma capacité à concevoir, structurer et orchestrer des pipelines de données de bout en bout, depuis l’ingestion d’une API externe jusqu’à la production de données exploitables, en utilisant des outils standards de l’écosystème data (Airflow, Kedro, Docker).
+
 
 ## Notes de production
 
@@ -347,26 +386,11 @@ Pour un déploiement en production :
 
 2. **Scalabilité**
    - Augmenter le nombre de workers Airflow
-   - Utiliser une vraie base de données (PostgreSQL au lieu de SQLite)
-
-3. **Monitoring**
-   - Activer les alertes Airflow
-   - Mettre en place du logging centralisé
-   - Ajouter des métriques (temps d'exécution, nombre d'erreurs)
 
 4. **Data**
    - Archiver/nettoyer les vieilles données
    - Implémenter une stratégie de partitionnement
    - Ajouter des validations et qualité de données
-
-## Contribution
-
-Les contributions sont bienvenues ! Pour contribuer :
-
-1. Créer une branche feature
-2. Faire les modifications
-3. Ajouter/mettre à jour les tests
-4. Créer une pull request
 
 ## License
 
