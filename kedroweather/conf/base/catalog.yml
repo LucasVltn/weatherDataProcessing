@@ -8,13 +8,20 @@ city_weather_info:
   filepath: data/01_raw/city_weather_info.json
 
 
+# readable_city_weather_data:
+#   type: partitions.PartitionedDataset
+#   path: data/02_intermediate/events/
+#   dataset:
+#     type: pandas.CSVDataset
+#     save_args:
+#       sep: ";"
+#       index: False
+#     load_args:
+#       sep: ";"
+
 readable_city_weather_data:
-  type: partitions.PartitionedDataset
-  path: data/02_intermediate/events/
-  dataset:
-    type: pandas.CSVDataset
-    save_args:
-      sep: ";"
-      index: False
-    load_args:
-      sep: ";"
+  type: pandas.SQLTableDataset
+  table_name: weather_processed
+  credentials: postgres_kedro
+  save_args:
+    if_exists: append   # remplace la table si elle existe

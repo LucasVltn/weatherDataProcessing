@@ -6,6 +6,7 @@ volumes de sortie pour la persistance des données.
 
 Planification : toutes les 7 minutes
 """
+import os
 
 from airflow import DAG
 from airflow.hooks.base import BaseHook
@@ -15,8 +16,11 @@ from datetime import datetime, timedelta
 
 
 # Récupération de la clé API depuis les connexions Airflow
-conn = BaseHook.get_connection("weatherApiKey")
-api_key = conn.extra_dejson.get("api_key")
+api_key = os.environ.get("API_KEY")
+db_host = os.environ.get("DB_HOST")
+db_name = os.environ.get("DB_NAME")
+db_user = os.environ.get("DB_USER")
+db_pass = os.environ.get("DB_PASS")
 
 # Définition du DAG
 with DAG(
@@ -43,9 +47,13 @@ with DAG(
         auto_remove=True,
         command="kedro run",
         docker_url="unix://var/run/docker.sock",
-        network_mode="bridge",
+        network_mode="weatherdataprocessing_default",
         environment={
-            "API_KEY": api_key
+            "API_KEY": api_key,
+            "DB_HOST": db_host,
+            "DB_NAME": db_name,
+            "DB_USER": db_user,
+            "DB_PASS": db_pass,
         },
         mounts=[
             Mount(

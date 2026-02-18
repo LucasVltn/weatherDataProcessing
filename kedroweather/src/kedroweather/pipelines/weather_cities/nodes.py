@@ -67,7 +67,6 @@ def get_city_weather_info(city_names: list[str]) -> dict:
     """
     result = {}
     api_key = os.environ.get("API_KEY")
-    
     for city_name in city_names:
         lat, lon = get_city_coordinates(city_name, api_key)  # type: ignore
         
@@ -94,7 +93,7 @@ def get_city_weather_info(city_names: list[str]) -> dict:
     return result
 
 
-def readable_weather_data(weather_data: dict) -> dict[str, pd.DataFrame]:
+def readable_weather_data(weather_data: dict) -> pd.DataFrame:
     """Transforme les données météorologiques brutes en format lisible.
 
     Convertit les données JSON brutes de l'API en DataFrame pandas avec
@@ -113,13 +112,12 @@ def readable_weather_data(weather_data: dict) -> dict[str, pd.DataFrame]:
         current = data['current']
         df = pd.DataFrame([{
             "city": city,
-            'timestamp': pd.to_datetime(current['dt'], unit='s'),
+            'timestamp': pd.to_datetime(current['dt'], unit='s').strftime('%Y-%m-%d %H:%M'),
             'temperature': current['temp'],
             'humidity': current['humidity'],
             'weather_description': current['weather'][0]['description']
         }])
         result = pd.concat([result, df], ignore_index=True)
     
-    horodatage = str(result["timestamp"][0].strftime('%Y-%m-%d %Hh%M')) + ".csv"
-    
-    return {horodatage: result}
+    # horodatage = str(result["timestamp"][0].strftime('%Y-%m-%d %Hh%M')) + ".csv"
+    return result
