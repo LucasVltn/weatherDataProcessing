@@ -8,7 +8,7 @@ Pipeline de données météo automatisé démontrant la mise en place d’une in
 
 ## Vue d'ensemble
 
-Ce projet automatise la collecte de données météorologiques en temps réel via l'API OpenWeatherMap, les transforme en format structuré et les stocke de manière organisée. Le pipeline s'exécute automatiquement toutes les 7 minutes grâce à l'orchestration Airflow.
+Ce projet automatise la collecte de données météorologiques en temps réel via l'API OpenWeatherMap, les transforme en format structuré et les stocke dans une base de données PostgreSQL. Le pipeline s'exécute automatiquement toutes les 7 minutes grâce à l'orchestration Airflow.
 
 ### Fonctionnalités principales
 
@@ -18,7 +18,7 @@ Ce projet automatise la collecte de données météorologiques en temps réel vi
 - ✅ Orchestration Airflow avec exécution périodique
 - ✅ Containerisation Docker pour reproductibilité
 - ✅ Pipeline Kedro modulaire et testable
-- ✅ Stockage organisé selon les standards Kedro (raw, intermediate, primary, etc.)
+- ✅ Stockage des données en base PostgreSQL
 
 ## Architecture
 
@@ -36,7 +36,7 @@ Pipeline Kedro (nettoyage & transformation)
 
 ↓
 
-Données structurées (CSV)
+Base de données PostgreSQL
 
 ↓
 
@@ -78,24 +78,33 @@ Le pipeline exécute deux nœuds en séquence :
    - Entrée : liste de villes depuis `params:cities`
    - Sortie : `city_weather_info` (données brutes JSON)
 
-2. **`readable_city_weather_data_node`** - Transformation et formatage
+2. **`readable_city_weather_data_node`** - Transformation et chargement en DB
    - Fonction : `readable_weather_data()`
    - Transforme les données JSON en DataFrame pandas
-   - Crée un fichier CSV horodaté
-   - Sortie : `readable_city_weather_data` (données formatées)
+   - Charge les données dans PostgreSQL (table `weather_data`)
+   - Sortie : `readable_city_weather_data` (données sauvegardées en DB)
 
 ### Structure des données (Data Catalog)
 
 Le projet suit la structure Kedro standard :
 
 - **`01_raw/`** - Données brutes en provenance de l'API
-- **`02_intermediate/`** - Données transformées intermédiaires (CSV)
-- **`03_primary/`** - Données nettoyées et validées
+- **`02_intermediate/`** - Données transformées intermédiaires (base de données)
+- **`03_primary/`** - Données nettoyées et validées (PostgreSQL)
 - **`04_feature/`** - Données avec features engineering
 - **`05_model_input/`** - Données prêtes pour modélisation
 - **`06_models/`** - Modèles entraînés
 - **`07_model_output/`** - Résultats des prédictions
 - **`08_reporting/`** - Rapports et visualisations
+
+**Base de données PostgreSQL** : Table principale `weather_data` contenant :
+- `id` (clé primaire)
+- `city` (nom de la ville)
+- `timestamp` (date/heure de la mesure)
+- `temperature` (température en Celsius)
+- `humidity` (humidité relative %)
+- `weather_description` (description météo)
+- `created_at` (date d'insertion)
 
 ## Installation
 
@@ -103,6 +112,7 @@ Le projet suit la structure Kedro standard :
 
 - Python 3.8+
 - Docker et Docker Compose
+- PostgreSQL (fourni dans Docker Compose)
 - Clé API OpenWeatherMap (obtenir sur https://openweathermap.org/api)
 
 ### Étapes d'installation
@@ -113,16 +123,18 @@ Le projet suit la structure Kedro standard :
    cd weatherDataProcessing
    ```
 
-2. **Configurer la clé API**
+2. **Configurer la clé API et la base de données**
    
    Dans `kedroweather/conf/local/credentials.yml` :
    ```yaml
    api_key: "votre_cle_api_ici"
+   db_connection: "postgresql://user:password@localhost:5432/weather_db"
    ```
    
-   Ou via variable d'environnement :
+   Ou via variables d'environnement :
    ```bash
    export API_KEY="votre_cle_api_ici"
+   export DB_CONNECTION="postgresql://user:password@localhost:5432/weather_db"
    ```
 
 3. **Configurer les villes**
@@ -193,23 +205,30 @@ kedro run --params cities='[Paris,Londres,Berlin]'
 
 ### Vérifier les résultats
 
-Le pipeline génère des fichiers de données météo structurées, exploitables pour de l’analyse ou du stockage en base de données.
+Le pipeline stocke les données directement dans PostgreSQL. Pour consulter les données :
 
-Les fichiers de sortie sont dans `output/02_intermediate/events/` :
 ```bash
-ls output/02_intermediate/events/
-# 2026-01-27 19h15.csv
-# 2026-01-27 19h08.csv
-# ...
+# Accéder à la base de données
+psql -U postgres -d weather_db -h localhost
+
+# Consulter les données
+SELECT * FROM weather_data ORDER BY created_at DESC LIMIT 10;
+
+# Statistiques par ville
+SELECT city, COUNT(*), AVG(temperature), MAX(humidity)
+FROM weather_data
+GROUP BY city;
 ```
 
-Contenu des fichiers CSV :
+Contenu de la table `weather_data` :
 ```
-city,timestamp,temperature,humidity,weather_description
-Paris,2026-01-27 19:15:00,8.5,65,Nuageux
+ id | city  | timestamp           | temperature | humidity | weather_description | created_at
+---+-------+---------------------+-------------+----------+---------------------+------------------------
+  1 | Paris | 2026-01-27 19:15:00 |         8.5 |       65 | Nuageux             | 2026-01-27 19:15:30
+  2 | Lyon  | 2026-01-27 19:15:00 |         6.2 |       70 | Partiellement clair | 2026-01-27 19:15:35
 ```
 
-Ces données peuvent ensuite être utilisées pour de la visualisation, de l’analyse ou intégrées dans un système de stockage analytique.
+Ces données peuvent ensuite être utilisées pour de la visualisation, de l'analyse ou intégrées dans un système de BI.
 
 
 ## Configuration
@@ -229,6 +248,7 @@ Ces données peuvent ensuite être utilisées pour de la visualisation, de l’a
 
 `airflow_dags/docker-compose.yml` :
 - Configuration de la stack Airflow
+- Service PostgreSQL intégré
 - Variables d'environnement
 - Volumes montés
 
@@ -361,7 +381,7 @@ get_city_weather_info() → Récupère données météo
        ↓
 readable_weather_data() → Transforme en DataFrame
        ↓
-CSV horodaté → output/02_intermediate/events/
+PostgreSQL → Table weather_data (INSERT)
 ```
 
 ## Performance
@@ -383,14 +403,18 @@ Pour un déploiement en production :
 1. **Sécurité**
    - Stocker les secrets dans un vault (Vault, AWS Secrets Manager)
    - Ne pas commiter de credentials
+   - Utiliser une connexion SSL/TLS pour PostgreSQL
 
 2. **Scalabilité**
    - Augmenter le nombre de workers Airflow
+   - Optimiser les index PostgreSQL (créer un index sur `created_at` et `city`)
 
-4. **Data**
+3. **Base de données**
    - Archiver/nettoyer les vieilles données
-   - Implémenter une stratégie de partitionnement
+   - Implémenter une stratégie de partitionnement par date
    - Ajouter des validations et qualité de données
+   - Configurer les backups réguliers
+   - Mettre en place le monitoring (requêtes lentes, disque, CPU)
 
 ## License
 
